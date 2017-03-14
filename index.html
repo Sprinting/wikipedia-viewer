@@ -1,0 +1,167 @@
+<html>
+	<head>
+		<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet"
+		integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+		<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"
+		integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+		<link rel='stylesheet' href="css/style.css">
+		 <link rel="shortcut icon" href="favicon/favicon.ico" type="image/x-icon">
+		<script src="js/MediawikiJS.js"></script>
+		<title>Wikipedia Viewer</title>
+
+	</head>
+	<body>
+		<div class = 'container-fluid'>
+			<div class = 'row'>
+					<div id ='searchbox' class ='col-md-2'>
+						<form>
+							<div class ='container-fluid'>
+								<div class='row'>
+									<div class ='col-md-12'>
+									<p class='random'><a target="_blank" class='random' href="https://en.wikipedia.org/wiki/Special:random">
+										I'm feeling lucky
+									</a></p>
+									<input type ='text' id = 'search_text'>
+									<input type ='submit' id ='search_button'>
+								</div>
+							</div>
+								<div class ='row'>
+									<div>
+										<i class ='fa fa-arrow-circle-left' data-direction="Previous" id='search_prev'></i>
+									</div>
+									<div>
+										<i class ='fa fa-arrow-circle-right' data-direction="Next" id ='search_next'></i>
+									</div>
+								</div>
+
+							</div>
+						</form>
+					</div>
+					<div class='col-md-10'>
+						<div class ='container-fluid' id ='content_wrapper'>
+						</div>
+					</div>
+			</div>
+		</div>
+		<script>
+			let last_offset = 0
+			let default_offset_value = 10
+			let total_hits = 100000 // a large default
+			let search_button = document.querySelector('input#search_button')
+			console.log('search_button')
+			let search_next = document.querySelector('i#search_next')
+			console.log(search_next)
+			let search_prev = document.querySelector('i#search_prev')
+			console.log(search_prev)
+			function search()
+			{
+				let mwjs = MediaWikiJS('https://en.wikipedia.org');
+				opts = {
+					action: 'query',
+					list: 'search',
+					srsearch: document.querySelector('input#search_text').value,
+					srwhat: 'text',
+					format: 'json',
+					sroffset: last_offset
+				};
+				mwjs.send(opts,(data) =>{
+					populate_content(data,data.hasOwnProperty('error'));
+				});
+			}
+
+			search_next.addEventListener('click',(event_) =>{
+				if(total_hits - last_offset>0)
+				{
+					console.log(total_hits-last_offset)
+					search_prev.removeAttribute('disabled')
+					last_offset = last_offset+default_offset_value
+					search()
+				}
+				else {
+					search_next.setAttribute('disabled','')
+				}
+			})
+
+			search_prev.addEventListener('click',(event_) =>{
+				if(last_offset>0)
+				{
+					search_next.removeAttribute('disabled')
+					last_offset = last_offset - default_offset_value
+					search()
+				}
+				else {
+					search_prev.setAttribute('disabled','')
+				}
+			})
+
+			search_button.addEventListener('click',(event_)=>{
+				event_.preventDefault();
+				search();
+			})
+
+
+			function populate_content(data,error_status)
+			{
+				let content_div=document.querySelector('div#content_wrapper');
+				if(error_status)
+				{
+					content_div.innerHTML ="";
+					let error_div = document.createElement('div');
+					error_div.setAttribute('class','content error');
+					error_div.appendChild(document.createTextNode(data.error.info));
+					content_div.appendChild(error_div)
+
+				}
+				else
+				{
+					//last_offset = last_offset + default_offset_value
+					content_div.innerHTML ="";
+					total_hits = data.query.searchinfo.totalhits;
+					data.query.search.map((item)=>{
+								let template = document.createElement('template')
+								template.innerHTML = item.snippet
+
+								let url = encodeURI('https://en.wikipedia.org/wiki/'+item.title)
+								let title_wrapper = document.createElement('a')
+								title_wrapper.setAttribute('href',url)
+								title_wrapper.setAttribute('target','_blank')
+
+								let title = document.createElement('div')
+								title.setAttribute('class','search title')
+								title.appendChild(
+								document.createTextNode(item.title))
+
+								title_wrapper.appendChild(title)
+
+								let wordcount = document.createElement('div')
+								wordcount.setAttribute('class','search wordcount')
+								wordcount.appendChild(
+								document.createTextNode(item.wordcount+ ' words'))
+
+								let template_container = document.createElement('div')
+								template_container.setAttribute('class','search abstract')
+								template_container.appendChild(template.content)
+
+								let uri_container = document.createElement('div')
+								uri_container.setAttribute('class','search uri')
+								uri_container.appendChild(document.createTextNode(url))
+
+								let result = document.createElement('div')
+								result.setAttribute('class','col-xs-10')
+								result.appendChild(title_wrapper)
+								result.appendChild(uri_container)
+								result.appendChild(wordcount)
+								result.appendChild(template_container)
+
+								let row = document.createElement('div')
+								row.setAttribute('class','results row')
+								row.appendChild(result)
+
+								let content_wrapper = document.querySelector('div#content_wrapper')
+								content_wrapper.appendChild(row)
+								return template_container})
+				}
+			}
+		</script>
+	</body>
+</html>
